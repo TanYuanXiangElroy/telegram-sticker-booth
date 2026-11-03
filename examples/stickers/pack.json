@@ -1,0 +1,12 @@
+{
+  "stickers": [
+    {"emoji": "😂", "png": "laugh.png", "webp": "laugh.webp"},
+    {"emoji": "👍", "png": "thumbs_up.png", "webp": "thumbs_up.webp"},
+    {"emoji": "❤️", "png": "heart.png", "webp": "heart.webp"},
+    {"emoji": "😭", "png": "cry.png", "webp": "cry.webp"},
+    {"emoji": "😡", "png": "angry.png", "webp": "angry.webp"},
+    {"emoji": "🎉", "png": "party.png", "webp": "party.webp"},
+    {"emoji": "🤔", "png": "think.png", "webp": "think.webp"},
+    {"emoji": "😴", "png": "sleep.png", "webp": "sleep.webp"}
+  ]
+}

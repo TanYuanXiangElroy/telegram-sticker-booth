@@ -1,0 +1,23 @@
+# secrets
+.env
+.env.*
+!.env.example
+# environments
+venv/
+.venv/
+__pycache__/
+*.pyc
+.ipynb_checkpoints/
+# your photos and generated output
+photos/
+out/
+raw/
+notebook/out/
+*.zip
+*.heic
+.DS_Store
+Thumbs.db
+
+# booth sessions and your own prompts
+sessions/
+my_prompts.json

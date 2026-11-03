@@ -1,0 +1,3 @@
+-r requirements.txt
+ipykernel>=6.29      # run notebook/sticker_booth.ipynb in Cursor / VS Code
+nbconvert>=7.16      # optional: run it headless with `jupyter nbconvert --execute`

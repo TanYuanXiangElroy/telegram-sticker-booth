@@ -1,0 +1,6 @@
+# core pipeline (generate, postprocess); telegram_pack uses only the standard library
+numpy>=1.26
+scipy>=1.11
+Pillow>=10.0
+requests>=2.31
+# optional: pillow-heif  (read iPhone .heic photos)

@@ -64,6 +64,121 @@ TELEGRAM_BOT_TOKEN=...    # from @BotFather
 
 For the notebook, also run `pip install -r requirements-notebook.txt` and pick the `venv` interpreter as the kernel.
 
+## Docker
+
+If you already have [Docker](https://docs.docker.com/get-docker/) installed, you can run the CLI without a local Python venv. The image does **not** bake in API keys, photos or generated stickers: pass credentials at run time and mount host folders for input/output.
+
+**Build** (from the repo root):
+
+```powershell
+# Windows PowerShell
+docker build -t sticker-booth .
+```
+
+```bash
+# Linux / macOS — not tested on those hosts (Windows + Docker Desktop only)
+docker build -t sticker-booth .
+```
+
+**Runtime layout.** Keep secrets and data on the host:
+
+| Host path | Container path | Purpose |
+|---|---|---|
+| `.env` | (via `--env-file`) | `GEMINI_API_KEY`, optional Telegram vars — never put these in the Dockerfile |
+| `photos/` | `/data/photos` | your selfies (git-ignored) |
+| `out/` | `/data/out` | generated stickers |
+| `sessions/` | `/app/sessions` | booth session state (edit on the host if you prefer not to use the CLI) |
+| `my_prompts.json` | `/app/my_prompts.json` | optional custom prompts (copy from `my_prompts.example.json`) |
+
+Create the host folders first if they do not exist (`photos`, `out`, `sessions`). Copy `.env.example` to `.env` and fill in placeholders only — never commit `.env`.
+
+Linux / macOS Docker commands below are **documented only** (same CLI as Windows). They were **not tested** on Linux or macOS hosts here — only on Windows 10 with Docker Desktop.
+
+**CLI help** (no API call):
+
+```powershell
+# Windows PowerShell
+docker run --rm sticker-booth sticker_booth.booth --help
+docker run --rm sticker-booth sticker_booth.generate --help
+docker run --rm sticker-booth sticker_booth.postprocess --help
+```
+
+```bash
+# Linux / macOS — not tested on those hosts (Windows + Docker Desktop only)
+docker run --rm sticker-booth sticker_booth.booth --help
+docker run --rm sticker-booth sticker_booth.generate --help
+docker run --rm sticker-booth sticker_booth.postprocess --help
+```
+
+**Offline conversion** (uses the bundled green-screen fixture; no Gemini key):
+
+```powershell
+# Windows PowerShell — write into a host ./out folder
+New-Item -ItemType Directory -Force -Path out | Out-Null
+docker run --rm -v "${PWD}/out:/data/out" sticker-booth `
+  sticker_booth.generate --from-raw examples/sample_raw.png --emojis laugh --out /data/out
+# -> ./out/sample_raw/laugh.png and .webp
+```
+
+```bash
+# Linux / macOS — not tested on those hosts (Windows + Docker Desktop only)
+mkdir -p out
+docker run --rm -v "$PWD/out:/data/out" sticker-booth \
+  sticker_booth.generate --from-raw examples/sample_raw.png --emojis laugh --out /data/out
+# -> ./out/sample_raw/laugh.png and .webp
+```
+
+**Generate with your photo** (paid Gemini calls — needs billing on the key):
+
+```powershell
+# Windows PowerShell
+docker run --rm --env-file .env `
+  -v "${PWD}/photos:/data/photos" `
+  -v "${PWD}/out:/data/out" `
+  sticker-booth sticker_booth.generate /data/photos/me.jpg --style pixel --out /data/out
+```
+
+```bash
+# Linux / macOS — not tested on those hosts (Windows + Docker Desktop only)
+docker run --rm --env-file .env \
+  -v "$PWD/photos:/data/photos" \
+  -v "$PWD/out:/data/out" \
+  sticker-booth sticker_booth.generate /data/photos/me.jpg --style pixel --out /data/out
+```
+
+**Booth sessions** (also mount `sessions/`):
+
+You can edit booth state on the host instead of only through the CLI. With the mounts below, open these folders/files in Explorer / Finder / your editor:
+
+| Host path | What you can change by hand |
+|---|---|
+| `sessions/<name>/session.json` | remembered photo path, style, extra text, last pack name |
+| `sessions/<name>/previews/` | preview PNGs before approve (delete one to force a redo) |
+| `sessions/<name>/approved/` | final `.png` / `.webp` after approve |
+| `my_prompts.json` | your custom prompts (start from `my_prompts.example.json`) |
+
+```powershell
+# Windows PowerShell
+docker run --rm -it --env-file .env `
+  -v "${PWD}/photos:/data/photos" `
+  -v "${PWD}/out:/data/out" `
+  -v "${PWD}/sessions:/app/sessions" `
+  -v "${PWD}/my_prompts.json:/app/my_prompts.json" `
+  sticker-booth sticker_booth.booth --dry-run list
+```
+
+```bash
+# Linux / macOS — not tested on those hosts (Windows + Docker Desktop only)
+docker run --rm -it --env-file .env \
+  -v "$PWD/photos:/data/photos" \
+  -v "$PWD/out:/data/out" \
+  -v "$PWD/sessions:/app/sessions" \
+  -v "$PWD/my_prompts.json:/app/my_prompts.json" \
+  sticker-booth sticker_booth.booth --dry-run list
+```
+
+On Windows, prefer PowerShell (or Git Bash) so `${PWD}` resolves; classic `cmd.exe` `%cd%` mounts can be awkward with Docker Desktop. Do not `docker cp` secrets into the image or commit a built image that contains `.env`.
+
 ## Quick start: the booth
 
 The easiest way in. One command, `python -m sticker_booth.booth`, takes you from a photo to stickers in your pack. Run it with no arguments for an interactive `booth>` prompt, or pass a command as shown below. It remembers your photo, previews and pack in `sessions/<name>/session.json` (git-ignored). Use `--session alice` to keep a friend's run separate.
@@ -175,6 +290,7 @@ sticker_booth/
   postprocess.py    green screen -> 512 px sticker, contact sheet (CLI)
   telegram_pack.py  stickers -> Telegram pack via your bot (CLI)
   env.py            tiny .env loader
+Dockerfile / .dockerignore     optional Docker CLI image (keys & data mounted at run time)
 notebook/sticker_booth.ipynb   step-by-step walkthrough
 docs/HANDOFF.md                maintenance guide
 examples/                      the 8-Bit pack above, plus one raw generation

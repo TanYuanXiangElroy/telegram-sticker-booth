@@ -21,6 +21,8 @@ cp .env.example .env      # fill in GEMINI_API_KEY, TELEGRAM_BOT_TOKEN, optional
 ```
 Keep keys in `.env` (git-ignored). Never paste them in chat, commit them or print URLs that contain the bot token; the scripts never print either key. The cleanup is light (NumPy/SciPy, one image at a time), so it suits a low-CPU server.
 
+Optional Docker: `docker build -t sticker-booth .` then run with `--env-file .env` and bind mounts for `photos/`, `out/` and `sessions/` (see README "Docker"). The image ships code + `examples/` only; never bake keys or user photos into the image.
+
 ## Full flow
 ```
 # 1. generate (about $0.034 per sticker; 8 emojis about $0.27). --dry-run first to check cost

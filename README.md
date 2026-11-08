@@ -177,6 +177,7 @@ sticker_booth/
   env.py            tiny .env loader
 notebook/sticker_booth.ipynb   step-by-step walkthrough
 docs/HANDOFF.md                maintenance guide
+docs/FUTURE.md                 planned improvements (not shipped)
 examples/                      the 8-Bit pack above, plus one raw generation
 ```
 

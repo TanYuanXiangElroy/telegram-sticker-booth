@@ -115,9 +115,11 @@ python -m sticker_booth.generate --from-raw raw.png --emojis laugh --out out   #
 
 On Windows without activating the venv, use `venv\Scripts\python -m sticker_booth.generate ...`.
 
-### Notebook
+### Notebook / Colab
 
-[`notebook/sticker_booth.ipynb`](notebook/sticker_booth.ipynb) takes one photo through every stage: the prompt, the Gemini call, the raw image, the chroma key, the cleanup, the contact sheet and an optional upload. It explains each step along the way. With `USE_API = False`, the default, it loads `examples/sample_raw.png`, so it runs top to bottom for free:
+[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/TanYuanXiangElroy/telegram-sticker-booth/blob/main/notebook/sticker_booth.ipynb)
+
+[`notebook/sticker_booth.ipynb`](notebook/sticker_booth.ipynb) bootstraps the repo on Colab, supports photo upload, Colab Secrets / `getpass` for keys, offline conversion by default, ZIP download, and optional Telegram upload of **this run's** output. `USE_API` and `UPLOAD` default to `False`. Prefer the GitHub-backed Colab link above; an older Drive copy is not automatically updated.
 
 ```bash
 jupyter nbconvert --to notebook --execute notebook/sticker_booth.ipynb --output executed.ipynb

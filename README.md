@@ -113,6 +113,18 @@ python -m sticker_booth.postprocess raw.png out/laugh                 # -> out/l
 python -m sticker_booth.generate --from-raw raw.png --emojis laugh --out out   # also writes pack.json + sheet
 ```
 
+### Export a PNG/WebP ZIP (no bot token)
+
+Bundle approved stickers for backup or hand import. **Telegram does not install a pack from a ZIP automatically** — you still use @Stickers manually or this project's bot upload.
+
+```bash
+python -m sticker_booth.export_zip examples/stickers --out stickers_export.zip
+python -m sticker_booth.export_zip sessions/me/approved --out me_approved.zip
+python -m sticker_booth.export_zip examples/stickers --only laugh,cry --out subset.zip
+```
+
+Archive layout: `png/<name>.png`, `webp/<name>.webp`, `README_IMPORT_INSTRUCTIONS.txt`. Only those sticker files are included (no photos, `.env`, or session junk).
+
 On Windows without activating the venv, use `venv\Scripts\python -m sticker_booth.generate ...`.
 
 ### Notebook
@@ -174,6 +186,7 @@ sticker_booth/
   generate.py       photo(s) -> Gemini -> stickers (CLI)
   postprocess.py    green screen -> 512 px sticker, contact sheet (CLI)
   telegram_pack.py  stickers -> Telegram pack via your bot (CLI)
+  export_zip.py     approved stickers -> png/+webp/ ZIP (no bot token)
   env.py            tiny .env loader
 notebook/sticker_booth.ipynb   step-by-step walkthrough
 docs/HANDOFF.md                maintenance guide

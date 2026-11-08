@@ -10,6 +10,7 @@ Run every command from the repo root with the venv active (Windows: `venv\Script
 - `sticker_booth/prompts.py`: emoji scenes (`EMOJIS`), styles (`STYLES`: cartoon, cyberpunk, pixel), the prompt `TEMPLATE` and optional extras (`NO_SCENERY`, `ONLY_PERSON`).
 - `sticker_booth/postprocess.py`: the cleanup (chroma key, largest blob, despill, 512 px, stroke), plus `contact_sheet()`. Also a standalone CLI.
 - `sticker_booth/telegram_pack.py`: uploads stickers, creates or extends the pack and optionally posts the link to a chat or topic. Standard library only.
+- `sticker_booth/export_zip.py`: pack a sticker folder into `png/` + `webp/` + import README ZIP (no bot token). Telegram does not auto-import the ZIP as a pack.
 - `sticker_booth/env.py`: loads `.env` and makes the Windows console print emoji.
 - `notebook/sticker_booth.ipynb`: the same pipeline step by step. `USE_API=False` uses `examples/sample_raw.png`.
 - `examples/stickers/`: a finished 8-Bit pack used as reference output and for dry runs.

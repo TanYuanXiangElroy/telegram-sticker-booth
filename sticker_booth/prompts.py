@@ -5,6 +5,7 @@ Each emoji: (file_name, scene, palette[, notes]). The final prompt is built from
 "The person in the photo ...". Stickers are grouped into PACKS; --emojis takes a pack name
 (classic, dev, moods, reactions), 'all', or a comma list of names/emojis.
 """
+import random
 
 # Appended to the newer entries: Gemini likes to paint a square scene behind the person.
 NO_PANEL = "No square background panel behind the person; only the person and their props."
@@ -149,6 +150,38 @@ CLEAN_SHAVEN = "Clean-shaven: no beard, no moustache, no stubble, smooth chin an
 
 NAMES = {v[0]: k for k, v in EMOJIS.items()}  # 'laugh' -> '😂'
 
+# Optional --variations: seed picks one line from each pool. Defaults (no flag) leave prompts unchanged.
+# Seed reproduces these prompt choices only — Gemini pixels can still differ.
+VARIATION_POSES = (
+    "Pose tweak: three-quarter view, body angled slightly toward the viewer",
+    "Pose tweak: straight-on facing the camera, centred and upright",
+    "Pose tweak: dynamic lean with weight on one side, still fully inside the die-cut border",
+    "Pose tweak: slightly crouched or seated energy while keeping the same scene intent",
+)
+VARIATION_EXPRESSIONS = (
+    "Expression tweak: bigger eyes and a wider mouth, still recognisably the same person",
+    "Expression tweak: softer half-smile with raised brows, same emotion as the scene",
+    "Expression tweak: more exaggerated comic brows and cheeks, not a different face",
+    "Expression tweak: tighter focused look with a small sweat drop if it fits the mood",
+)
+VARIATION_PROPS = (
+    "Props tweak: enlarge the main prop a little and keep it attached inside the white border",
+    "Props tweak: add one small matching accent prop from the palette, connected to the figure",
+    "Props tweak: simplify secondary props so the main action reads clearly at sticker size",
+    "Props tweak: shift prop placement slightly left/right without detaching anything",
+)
+VARIATION_TEXT = (
+    "Text treatment: any required words in big bold blocky pixel letters, easy to read small",
+    "Text treatment: any required words inside a thick comic speech bubble with block letters",
+    "Text treatment: any required words as a retro pixel caption bar, still spelled exactly",
+    "Text treatment: if the scene has no required words, add none; keep lettering off the sticker",
+)
+VARIATION_LOCK = (
+    "Keep likeness, jet-black hair when the photo has black hair, natural skin tone, real clothing "
+    "colours, and the chunky pixel / thick white die-cut sticker look; only pose, expression, props "
+    "and text treatment may change."
+)
+
 
 def resolve_emojis(spec="classic"):
     """'all', a pack name from PACKS, or a comma list of emojis, names and/or packs ('😂,thumbs_up,dev').
@@ -171,7 +204,28 @@ def resolve_emojis(spec="classic"):
     return out
 
 
-def build_prompt(emoji, style="cartoon", extra=""):
+def variation_extra_by_name(name, seed):
+    """Seeded pose/expression/props/text block. Same seed + name => same prompt text."""
+    rng = random.Random(f"{seed}:{name}")
+    return " ".join([
+        rng.choice(VARIATION_POSES),
+        rng.choice(VARIATION_EXPRESSIONS),
+        rng.choice(VARIATION_PROPS),
+        rng.choice(VARIATION_TEXT),
+        VARIATION_LOCK,
+    ])
+
+
+def variation_extra(emoji, seed):
+    return variation_extra_by_name(EMOJIS[emoji][0], seed)
+
+
+def build_prompt(emoji, style="cartoon", extra="", *, variations=False, seed=None):
     _, scene, palette, *notes = EMOJIS[emoji]
     p = TEMPLATE.format(scene=scene, style=STYLES[style], palette=palette)
-    return " ".join([p, *notes, extra]).strip()
+    parts = [p, *notes, extra]
+    if variations:
+        if seed is None:
+            raise ValueError("variations=True requires a seed (reproduces prompt choices, not image pixels)")
+        parts.append(variation_extra(emoji, seed))
+    return " ".join(x for x in parts if x).strip()

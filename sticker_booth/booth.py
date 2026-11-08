@@ -4,12 +4,13 @@
   python -m sticker_booth.booth photo selfie.jpg [--extra "..."|--extra CLEAN_SHAVEN] [--style pixel]
   python -m sticker_booth.booth list                    # numbered menu (built-in packs, then your own)
   python -m sticker_booth.booth add [--name duck --emoji 🦆 --scene "The person in the photo ..."]
-  python -m sticker_booth.booth run 10 11 [--yes]       # numbers, names or packs: run dev, run laugh
+  python -m sticker_booth.booth run 10 11 [--yes] [--variations] [--seed N]
   python -m sticker_booth.booth approve 11 [--pack NAME] [--yes|--no-upload]
   python -m sticker_booth.booth status
 
 Global options go before the command: --session NAME (default "me"), --dry-run (no API calls: fake previews
 from examples/, no Telegram writes). Files live in sessions/<NAME>/ (git-ignored); your prompts in my_prompts.json.
+Optional --variations / --seed on run: vary pose/expression/props/text; seed reproduces prompt choices only.
 """
 import argparse
 import json
@@ -41,12 +42,18 @@ def menu():
         for e in keys:
             name, scene = prompts.EMOJIS[e][:2]
             items.append(dict(group=group, name=name, emoji=e, scene=scene,
-                              prompt=lambda style, extra, e=e: prompts.build_prompt(e, style, extra)))
+                              prompt=lambda style, extra, e=e, variations=False, seed=None:
+                              prompts.build_prompt(e, style, extra, variations=variations, seed=seed)))
     for m in load_mine():
-        def own(style, extra, m=m):
+        def own(style, extra, m=m, variations=False, seed=None):
             p = prompts.TEMPLATE.format(scene=m["scene"], style=prompts.STYLES[style],
                                         palette=m.get("palette") or DEFAULT_PALETTE)
-            return " ".join([p, m.get("notes", ""), prompts.NO_PANEL, extra]).strip()
+            parts = [p, m.get("notes", ""), prompts.NO_PANEL, extra]
+            if variations:
+                if seed is None:
+                    raise ValueError("variations=True requires a seed")
+                parts.append(prompts.variation_extra_by_name(m["name"], seed))
+            return " ".join(x for x in parts if x).strip()
         items.append(dict(group="mine", name=m["name"], emoji=m["emoji"], scene=m["scene"], prompt=own))
     for i, it in enumerate(items, 1):
         it["num"] = i
@@ -162,6 +169,7 @@ def fake_raw(name):
 def cmd_run(s, a, dry):
     if not s.data["photo"]:
         raise SystemExit("set a photo first: photo <path>")
+    seed = generate.resolve_variation_seed(a.variations, a.seed)
     todo = select(a.items, menu())
     prev = s.dir / "previews"
     prev.mkdir(parents=True, exist_ok=True)
@@ -183,7 +191,9 @@ def cmd_run(s, a, dry):
                 if dry:
                     shutil.copyfile(fake_raw(it["name"]), raw)
                 else:
-                    raw.write_bytes(generate.gemini(jpeg, it["prompt"](s.data["style"], s.data["extra"])))
+                    prompt = it["prompt"](s.data["style"], s.data["extra"],
+                                          variations=seed is not None, seed=seed)
+                    raw.write_bytes(generate.gemini(jpeg, prompt))
             except generate.StopRun as e:
                 raise SystemExit(f"Stopped: {e}")
             except Exception as e:
@@ -312,6 +322,10 @@ def parser():
     p.add_argument("items", nargs="+")
     p.add_argument("--yes", action="store_true", help="skip the cost question")
     p.add_argument("--again", action="store_true", help="regenerate even if a preview exists")
+    p.add_argument("--variations", action="store_true",
+                   help="vary pose, expression, props and text; default prompts unchanged without this")
+    p.add_argument("--seed", type=int, default=None,
+                   help="with --variations: reproduce prompt choices (not identical AI images)")
     p = sub.add_parser("approve", help="turn previews into stickers: approve 11")
     p.add_argument("nums", nargs="+")
     p.add_argument("--pack", help="existing pack name made by your bot (..._by_<bot>)")

@@ -2,6 +2,7 @@
 
   python -m sticker_booth.generate <photo_or_folder> [--style cartoon|cyberpunk|pixel]
          [--emojis classic|dev|moods|reactions|all|laugh,cry|😂,👍] [--out out] [--dry-run] [--model gemini-3.1-flash-lite-image]
+         [--variations] [--seed N]   # optional: vary pose/expression/props/text; seed reproduces prompt choices only
   python -m sticker_booth.generate --from-raw raw.png --emojis laugh --out out   # cleanup only, no API call
 
 Needs GEMINI_API_KEY (in .env or the environment) with billing on; the free tier has 0 image quota.
@@ -38,6 +39,20 @@ MODEL = "gemini-3.1-flash-lite-image"
 COST_PER_IMAGE = 0.034  # USD per image at 1K, check current Gemini pricing
 API = "https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent"
 WORKERS, MAX_TRIES = 2, 5
+
+
+def resolve_variation_seed(variations, seed):
+    """Return seed int when variations are on; None when off. Reject --seed without --variations."""
+    if seed is not None and not variations:
+        raise SystemExit("--seed requires --variations (seed reproduces prompt choices, not Gemini pixels)")
+    if not variations:
+        return None
+    if seed is None:
+        seed = random.randrange(2**31)
+        print(f"Variations on; using seed={seed} (re-run with --seed {seed} to reuse these prompt choices)")
+    else:
+        print(f"Variations on; seed={seed} (reproduces prompt choices only, not identical AI pixels)")
+    return seed
 
 
 class StopRun(Exception):
@@ -110,12 +125,13 @@ def post(raw_path, out_dir, name):
     return im
 
 
-def run_job(model, photo, jpeg, out_dir, emoji, style, extra, total):
+def run_job(model, photo, jpeg, out_dir, emoji, style, extra, total, seed=None):
     name = EMOJIS[emoji][0]
     raw = out_dir / "raw" / f"{name}.png"
     try:
         if not raw.exists():  # resume: skip already-generated raws
-            raw.write_bytes(gemini(jpeg, build_prompt(emoji, style, extra), model))
+            prompt = build_prompt(emoji, style, extra, variations=seed is not None, seed=seed)
+            raw.write_bytes(gemini(jpeg, prompt, model))
         post(raw, out_dir, name)
         ok = True
     except StopRun:
@@ -160,12 +176,18 @@ def main():
     ap.add_argument("--dry-run", action="store_true", help="print prompts and cost, call nothing")
     ap.add_argument("--model", default=MODEL)
     ap.add_argument("--from-raw", metavar="RAW", help="skip Gemini: clean up this green-screen image")
+    ap.add_argument("--variations", action="store_true",
+                    help="vary pose, expression, props and text treatment; default prompts stay unchanged without this")
+    ap.add_argument("--seed", type=int, default=None,
+                    help="with --variations: reproduce prompt choices (not identical AI images)")
     a = ap.parse_args()
 
     try:
         emojis = resolve_emojis(a.emojis)
     except ValueError as e:
         sys.exit(str(e))
+
+    seed = resolve_variation_seed(a.variations, a.seed)
 
     if a.from_raw:  # cleanup + sheet only, no API call
         raw = Path(a.from_raw)
@@ -190,7 +212,8 @@ def main():
     if a.dry_run:
         for p in photos:
             for e in emojis:
-                print(f"\n--- {p.name} {e} -> {a.out}/{p.stem}/{EMOJIS[e][0]}.webp\n{build_prompt(e, a.style, a.extra)}")
+                prompt = build_prompt(e, a.style, a.extra, variations=seed is not None, seed=seed)
+                print(f"\n--- {p.name} {e} -> {a.out}/{p.stem}/{EMOJIS[e][0]}.webp\n{prompt}")
         return
 
     try:
@@ -199,7 +222,8 @@ def main():
                 out_dir = Path(a.out) / p.stem
                 (out_dir / "raw").mkdir(parents=True, exist_ok=True)
                 jpeg = photo_jpeg(p)
-                futs = [pool.submit(run_job, a.model, p, jpeg, out_dir, e, a.style, a.extra, total) for e in emojis]
+                futs = [pool.submit(run_job, a.model, p, jpeg, out_dir, e, a.style, a.extra, total, seed)
+                        for e in emojis]
                 for f in futs:
                     f.result()  # re-raises StopRun
                 finish_photo(out_dir, emojis, first=("photo", ImageOps.exif_transpose(Image.open(p))))

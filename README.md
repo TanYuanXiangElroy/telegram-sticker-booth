@@ -142,6 +142,26 @@ The table above is the `classic` pack, the default. `prompts.py` also has a `dev
 
 To add an emoji or a style, add an entry to `EMOJIS` (file name, scene, palette, optional notes) and to a pack in `PACKS`, or to `STYLES`, in `sticker_booth/prompts.py`. Use `--extra` to add a sentence to every prompt, for example `--extra "Draw only the main person in the photo."` for group photos, or "no background scenery" if a style keeps drawing square panels.
 
+### Optional prompt variations
+
+Off by default: without `--variations`, prompts are exactly the built-in scenes. With `--variations`, the booth appends a seeded pick of pose, expression, props and text-treatment tweaks, plus a likeness / black-hair / skin-tone / chunky-pixel lock. **A seed reproduces those prompt choices only** — Gemini can still draw different pixels on a re-run.
+
+```bash
+# inspect prompts only (no API call)
+python -m sticker_booth.generate photos/me.jpg --style pixel --emojis laugh --variations --seed 42 --dry-run
+
+# same seed => same prompt text again
+python -m sticker_booth.generate photos/me.jpg --style pixel --emojis laugh --variations --seed 42 --dry-run
+
+# omit --seed to pick one and print it (so you can reuse it)
+python -m sticker_booth.generate photos/me.jpg --style pixel --emojis dragon --variations --dry-run
+
+# booth front end
+python -m sticker_booth.booth run 10 --variations --seed 42 --yes
+```
+
+`--seed` without `--variations` is an error. Invalid `--seed` (non-integer) is rejected by argparse.
+
 ## Costs and errors
 
 * `gemini-3.1-flash-lite-image` costs about **US$0.034 per image**, so 8 stickers come to about $0.27. Check current pricing; `--dry-run` prints the estimate.
@@ -178,6 +198,7 @@ sticker_booth/
 notebook/sticker_booth.ipynb   step-by-step walkthrough
 docs/HANDOFF.md                maintenance guide
 examples/                      the 8-Bit pack above, plus one raw generation
+tests/                         offline unit checks (e.g. variation seeds)
 ```
 
 ## Credits
